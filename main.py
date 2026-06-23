@@ -27,15 +27,66 @@ app = FastAPI(title="Engineering PDF Table Extractor", version="0.2.0")
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
+    <!DOCTYPE html>
     <html>
     <body style="font-family:Arial;max-width:600px;margin:50px auto">
         <h1>Engineering PDF Table Extractor</h1>
 
-        <input type="file">
+        <input type="file" id="file" accept="application/pdf">
+        <button onclick="run()">Extract Tables</button>
 
-        <button>
-            Extract Tables
-        </button>
+        <p id="status"></p>
+
+        <script>
+        async function run() {
+            const file = document.getElementById("file").files[0];
+            const status = document.getElementById("status");
+
+            if (!file) {
+                status.innerText = "Please choose a PDF file.";
+                return;
+            }
+
+            status.innerText = "Uploading...";
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const uploadRes = await fetch("/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            const uploadData = await uploadRes.json();
+            const jobId = uploadData.job_id;
+
+            status.innerText = "Extracting tables with Docling...";
+
+            await fetch(`/extract/${jobId}`, {
+                method: "POST"
+            });
+
+            while (true) {
+                await new Promise(r => setTimeout(r, 2000));
+
+                const statusRes = await fetch(`/status/${jobId}`);
+                const data = await statusRes.json();
+
+                if (data.status === "done") {
+                    status.innerText = "Done. Downloading Excel...";
+                    window.location.href = `/download/${jobId}`;
+                    break;
+                }
+
+                if (data.status === "error") {
+                    status.innerText = "Error: " + data.error;
+                    break;
+                }
+
+                status.innerText = "Processing...";
+            }
+        }
+        </script>
     </body>
     </html>
     """
