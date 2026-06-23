@@ -19,10 +19,9 @@ from models import (
 )
 from logger import logger
 
-from extractors.docling_extractor import DoclingExtractor
-from extractors.marker_extractor import MarkerExtractor
-from exports.excel_export import export_to_excel
-
+from docling_extractor import DoclingExtractor
+from marker_extractor import MarkerExtractor
+from excel_export import export_to_excel
 
 app = FastAPI(title="Engineering PDF Table Extractor", version="0.2.0")
 @app.get("/", response_class=HTMLResponse)
