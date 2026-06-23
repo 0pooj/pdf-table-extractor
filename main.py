@@ -261,7 +261,7 @@ def estimate_table_confidence(df) -> float:
     duplicate_headers = len(df.columns) - len(set(map(str, df.columns)))
     score -= duplicate_headers * 5
 
-    return round(max(0.0, min(100.0, score)), 1)olumns)
+    return round(max(0.0, min(100.0, score)), 1)
 
     score = 100.0
 
