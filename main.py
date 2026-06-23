@@ -262,23 +262,3 @@ def estimate_table_confidence(df) -> float:
     score -= duplicate_headers * 5
 
     return round(max(0.0, min(100.0, score)), 1)
-
-    score = 100.0
-
-    if rows < 2:
-        score -= 30
-
-    if cols < 2:
-        score -= 30
-
-    total_cells = rows * cols
-    empty_cells = df.isna().sum().sum()
-
-    if total_cells > 0:
-        empty_ratio = empty_cells / total_cells
-        score -= empty_ratio * 40
-
-    duplicate_headers = len(df.columns) - len(set(map(str, df.columns)))
-    score -= duplicate_headers * 5
-
-    return round(max(0.0, min(100.0, score)), 1)
