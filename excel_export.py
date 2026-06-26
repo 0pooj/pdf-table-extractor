@@ -1,40 +1,35 @@
-"""
-Excel export — one sheet per extracted table, with light formatting.
-"""
 from __future__ import annotations
 
 from typing import Any
 import pandas as pd
-from openpyxl import Workbook
-from openpyxl.styles import (
-    PatternFill,
-    Font,
-    Alignment,
-    Border,
-    Side,
-    numbers,
-)
-from openpyxl.utils import get_column_letter
-
-
-# Colour palette (engineering / blueprint feel)
-HEADER_BG = "1E3A5F"   # dark navy
-HEADER_FG = "FFFFFF"   # white
-ALT_ROW_BG = "EFF3F8"  # light blue-grey
-BORDER_COLOR = "B0C4DE" # steel blue
 
 
 def export_to_excel(tables: list[dict[str, Any]], output_path: str) -> None:
-    """
-    Write all extracted tables to a single .xlsx file.
+    print("EXPORT TABLES COUNT:", len(tables))
 
-    Each table becomes its own worksheet. A summary sheet is added first.
-    """
-    wb = Workbook()
-    # Remove the default empty sheet
-    wb.remove(wb.active)
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        summary = []
 
-    # ── Summary sheet ─────────────────────────────────────────────────
+        for i, table in enumerate(tables):
+            df = table["dataframe"]
+            title = str(table.get("title", f"Table {i + 1}"))
+            page = table.get("page", "")
+
+            print("WRITING TABLE:", i + 1, "shape=", df.shape)
+
+            sheet_name = f"Table_{i + 1}"
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+            summary.append({
+                "Table": i + 1,
+                "Title": title,
+                "Page": page,
+                "Rows": len(df),
+                "Columns": len(df.columns),
+                "Sheet": sheet_name,
+            })
+
+        pd.DataFrame(summary).to_excel(writer, sheet_name="Summary", index=False)    # ── Summary sheet ─────────────────────────────────────────────────
     ws_summary = wb.create_sheet("Summary", 0)
     _write_summary(ws_summary, tables)
 
