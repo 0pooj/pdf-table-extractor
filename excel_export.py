@@ -6,24 +6,23 @@ from openpyxl import Workbook
 
 def export_to_excel(tables: list[dict[str, Any]], output_path: str) -> None:
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Summary"
-
-    ws.append(["Table", "Title", "Page", "Rows", "Columns", "Sheet"])
+    summary = wb.active
+    summary.title = "Summary"
+    summary.append(["Table", "Rows", "Columns", "Sheet"])
 
     for i, table in enumerate(tables, start=1):
-        df = table["dataframe"].fillna("").astype(str)
-        title = str(table.get("title", f"Table {i}"))
-        page = table.get("page", "")
+        df = table["dataframe"]
         sheet_name = f"Table_{i}"
+        ws = wb.create_sheet(sheet_name)
 
-        ws.append([i, title, page, len(df), len(df.columns), sheet_name])
+        rows = df.values.tolist()
+        headers = [str(c) for c in df.columns.tolist()]
 
-        sheet = wb.create_sheet(sheet_name)
+        ws.append(headers)
 
-        sheet.append([str(c) for c in df.columns])
+        for row in rows:
+            ws.append([("" if v is None else str(v)) for v in row])
 
-        for _, row in df.iterrows():
-            sheet.append([str(v) for v in row.tolist()])
+        summary.append([i, len(rows), len(headers), sheet_name])
 
     wb.save(output_path)
