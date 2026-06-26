@@ -55,6 +55,7 @@ class DoclingExtractor:
                 tables.append({
                     "title": title,
                     "page": page_no,
+                    "dataframe": df,
                     "headers": headers,
                     "rows": rows,
                 })
