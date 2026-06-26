@@ -10,10 +10,12 @@ import pandas as pd
 class DoclingExtractor:
     def __init__(self):
         from docling.document_converter import DocumentConverter, PdfFormatOption
-        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractCliOcrOptions
         from docling.datamodel.base_models import InputFormat
 
         options = PdfPipelineOptions()
+        options.do_ocr = True
+        options.ocr_options = TesseractCliOcrOptions(lang=["eng"])
         options.do_table_structure = True
         options.table_structure_options.do_cell_matching = True
 
