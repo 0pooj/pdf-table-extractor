@@ -195,15 +195,17 @@ def _try_numeric(value: str) -> Any:
     """
     if not isinstance(value, str):
         return value
-    v = value.strip().replace(",", "")
+    v = value.strip().replace(",", "").replace(" ", "")
+    if not v: return ""
+    
+    # Don't convert if it looks like an item number (e.g. 1.1, 2/3)
+    if "." in v and v.count(".") > 1: return value
+    if "/" in v: return value
+    
     try:
-        i = int(v)
-        return i
-    except ValueError:
-        pass
-    try:
-        f = float(v)
-        return f
+        if "." in v:
+            return float(v)
+        return int(v)
     except ValueError:
         pass
     return value

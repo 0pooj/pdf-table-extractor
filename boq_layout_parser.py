@@ -1,17 +1,29 @@
-import fitz  # PyMuPDF
+import fitz
 import pandas as pd
 from typing import Any, List, Dict
 from logger import logger
 
 class BOQLayoutParser:
     """
-    Specialised parser for BOQ files where text is fragmented into narrow virtual columns.
-    It uses coordinate-based text reconstruction (Reflow) to merge split sentences.
+    Precision Parser for the specific BOQ layout provided.
+    Handles coordinate-based extraction and multi-line description merging.
     """
-    def __init__(self, col_thresholds: List[float] = None):
-        # Default BOQ column X-coordinates (approximate, will be auto-tuned)
-        # Item | Description | Unit | Qty | Rate | Amount
-        self.col_thresholds = col_thresholds or [0, 50, 350, 400, 450, 500]
+    def __init__(self):
+        # Coordinates based on actual file analysis:
+        # Item No: ~30-70
+        # Description: ~72-350
+        # Unit: ~350-375
+        # Quantity: ~377-430
+        # Rate: ~443-500
+        # Amount: ~512+
+        self.cols = [
+            {"name": "Item No", "x_range": (0, 71)},
+            {"name": "Description", "x_range": (71, 354)},
+            {"name": "Unit", "x_range": (354, 376)},
+            {"name": "Quantity", "x_range": (376, 442)},
+            {"name": "Rate", "x_range": (442, 511)},
+            {"name": "Amount", "x_range": (511, 1000)}
+        ]
 
     def extract(self, pdf_path: str) -> List[Dict[str, Any]]:
         results = []
@@ -20,106 +32,104 @@ class BOQLayoutParser:
             all_rows = []
             
             for page_num, page in enumerate(doc):
-                logger.info(f"[BOQ Parser] Processing page {page_num + 1}")
-                
-                # Get all words with their bounding boxes (x0, y0, x1, y1, word, block_no, line_no, word_no)
-                words = page.get_words()
+                words = page.get_text("words")
                 if not words: continue
                 
-                # Group words into lines based on Y coordinate (with 3px tolerance)
+                # Group by Y coordinate
                 lines: Dict[int, List[tuple]] = {}
                 for w in words:
-                    y_coord = int(w[1]) # Use y0
-                    found_line = False
-                    for line_y in lines:
-                        if abs(line_y - y_coord) < 3:
-                            lines[line_y].append(w)
-                            found_line = True
+                    y = int(w[1])
+                    found = False
+                    for ly in lines:
+                        if abs(ly - y) < 3:
+                            lines[ly].append(w)
+                            found = True
                             break
-                    if not found_line:
-                        lines[y_coord] = [w]
+                    if not found: lines[y] = [w]
                 
-                # Process lines from top to bottom
-                sorted_y = sorted(lines.keys())
-                for y in sorted_y:
-                    line_words = sorted(lines[y], key=lambda x: x[0]) # Sort by x0
+                for y in sorted(lines.keys()):
+                    line_words = sorted(lines[y], key=lambda x: x[0])
                     
-                    # Reconstruct row based on X coordinates
-                    # We'll map words to standard BOQ columns
-                    row = [""] * 6 # Item, Description, Unit, Qty, Rate, Amount
+                    # Ignore headers and footers
+                    row_text = " ".join([w[4] for w in line_words])
+                    if "EPUTUKEZI" in row_text or "eputikezi@" in row_text: continue
+                    if y < 60: continue # Header area
                     
-                    description_parts = []
+                    row = [""] * 6
                     for w in line_words:
                         x0 = w[0]
                         text = w[4]
                         
-                        # Logic to determine which column the word belongs to
-                        # This is a simplified version, real BOQs might need dynamic column detection
-                        if x0 < 50: # Item No
-                            row[0] += " " + text
-                        elif 50 <= x0 < 350: # Description (The fragmented part)
-                            description_parts.append(text)
-                        elif 350 <= x0 < 400: # Unit
-                            row[2] += " " + text
-                        elif 400 <= x0 < 450: # Qty
-                            row[3] += " " + text
-                        elif 450 <= x0 < 500: # Rate
-                            row[4] += " " + text
-                        else: # Amount
-                            row[5] += " " + text
+                        # Map word to column based on X coordinate
+                        for i, col in enumerate(self.cols):
+                            if col["x_range"][0] <= x0 < col["x_range"][1]:
+                                row[i] = (row[i] + " " + text).strip()
+                                break
                     
-                    # Merge fragmented description
-                    row[1] = " ".join(description_parts).strip()
-                    row = [c.strip() for c in row]
-                    
-                    # Only add rows that have at least some content in description or item no
-                    if row[0] or row[1]:
+                    # Basic cleanup
+                    if any(row):
                         all_rows.append(row)
 
             if all_rows:
-                df = pd.DataFrame(all_rows, columns=["Item No", "Description", "Unit", "Quantity", "Rate", "Amount"])
-                # Post-processing: Merge multi-line descriptions
-                final_df = self._merge_multiline_descriptions(df)
+                df = pd.DataFrame(all_rows, columns=[c["name"] for c in self.cols])
+                final_df = self._clean_and_merge(df)
                 
                 results.append({
                     "page": "All",
-                    "title": "BOQ Extracted Table",
+                    "title": "BOQ Extracted Data",
                     "dataframe": final_df,
                     "headers": final_df.columns.tolist(),
                     "rows": final_df.values.tolist()
                 })
-            
             doc.close()
         except Exception as e:
-            logger.error(f"BOQ Layout Parser error: {e}")
+            logger.error(f"Custom BOQ Parser error: {e}")
             
         return results
 
-    def _merge_multiline_descriptions(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _clean_and_merge(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        In BOQs, a single item description often spans multiple rows.
-        This merges rows where 'Item No' is empty into the previous row's description.
+        Merge multi-line descriptions and filter noise.
         """
-        merged_rows = []
-        current_row = None
+        merged = []
+        current = None
+        
+        # Keywords to ignore
+        ignore = ["Item", "No", "Quantity", "Rate", "Amount", "Brought Forward", "Carried Forward"]
         
         for _, row in df.iterrows():
-            if row["Item No"]: # New item starts
-                if current_row is not None:
-                    merged_rows.append(current_row)
-                current_row = row.tolist()
-            else: # Continuation of previous description
-                if current_row is not None:
-                    current_row[1] += " " + str(row["Description"])
-                    # Also try to capture Qty/Rate if they were on a different line (rare but happens)
-                    for i in [2, 3, 4, 5]:
-                        if not current_row[i] and row[i]:
-                            current_row[i] = row[i]
-                else:
-                    # First row has no Item No, just start it
-                    current_row = row.tolist()
-        
-        if current_row is not None:
-            merged_rows.append(current_row)
+            item_no = str(row["Item No"]).strip()
+            desc = str(row["Description"]).strip()
             
-        return pd.DataFrame(merged_rows, columns=df.columns)
+            # Skip header rows
+            if desc in ignore or item_no == "Item": continue
+            if not any(row.values): continue
+            
+            # If we have an Item No, it's a new entry
+            if item_no and any(c.isdigit() for c in item_no):
+                if current: merged.append(current)
+                current = row.tolist()
+            elif current:
+                # Continuation of description
+                if desc:
+                    current[1] = (current[1] + " " + desc).strip()
+                # If Qty/Rate/Amount appear on a sub-line, fill them
+                for i in range(2, 6):
+                    if not current[i] and row[i]:
+                        current[i] = row[i]
+            else:
+                # No current item, but we have text - could be a section header
+                if desc:
+                    current = row.tolist()
+                    merged.append(current)
+                    current = None
+        
+        if current: merged.append(current)
+        
+        # Final pass: remove empty rows and format numbers
+        clean_data = []
+        for r in merged:
+            if not r[1]: continue # Skip if no description
+            clean_data.append(r)
+            
+        return pd.DataFrame(clean_data, columns=df.columns)
