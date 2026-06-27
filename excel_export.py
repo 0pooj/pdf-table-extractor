@@ -99,41 +99,18 @@ def _write_table_sheet(ws, table: dict[str, Any]) -> None:
     headers = table.get("headers", [])
     rows = table.get("rows", [])
 
-    # Meta info block at top (rows 1-3)
-    ws["A1"] = table.get("title", "")
-    ws["A1"].font = Font(bold=True, size=13, color="1F4E79")
-    ws.merge_cells(start_row=1, start_column=1,
-                   end_row=1, end_column=max(len(headers), 1))
-
-    meta_parts = []
-    if table.get("page"):
-        meta_parts.append(f"Page: {table['page']}")
-    if table.get("confidence") is not None:
-        meta_parts.append(f"Confidence: {table['confidence']}%")
-    if table.get("extractor_used"):
-        meta_parts.append(f"Extractor: {table['extractor_used']}")
-
-    ws["A2"] = "  |  ".join(meta_parts)
-    ws["A2"].font = Font(italic=True, size=9, color="595959")
-    if len(headers) > 1:
-        ws.merge_cells(start_row=2, start_column=1,
-                       end_row=2, end_column=len(headers))
-
-    ws.row_dimensions[3].height = 4  # spacer
-
-    # Header row (row 4)
-    header_row_num = 4
+    # Header row (row 1)
+    header_row_num = 1
     if headers:
         ws.append(headers)
-        # ws.append inserts at the next available row (4 here)
         _style_header_row(ws, header_row_num, len(headers))
-        ws.row_dimensions[header_row_num].height = 20
+        ws.row_dimensions[header_row_num].height = 22
 
     # Data rows
     for row_idx, row in enumerate(rows, start=header_row_num + 1):
         converted = [_try_numeric(cell) for cell in row]
         ws.append(converted)
-        ws.row_dimensions[row_idx].height = 16
+        ws.row_dimensions[row_idx].height = 18
 
         # Alternate row shading
         if (row_idx - header_row_num) % 2 == 0:

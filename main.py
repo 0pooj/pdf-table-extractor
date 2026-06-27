@@ -1,6 +1,6 @@
 """
-Engineering PDF Table Extractor — v0.3.0
-FastAPI application entry point.
+Engineering PDF Table Extractor — v0.4.0
+FastAPI application entry point with modern UI and extractor selection.
 
 Extraction pipeline (lightest → heaviest):
   1. pdfplumber   — digital PDFs with drawn table borders (BOQ)
@@ -32,7 +32,7 @@ ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
 MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 
-FILE_TTL_HOURS = int(os.getenv("FILE_TTL_HOURS", "24"))   # auto-delete after N hours
+FILE_TTL_HOURS = int(os.getenv("FILE_TTL_HOURS", "24"))
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 EXPORT_DIR = Path(os.getenv("EXPORT_DIR", "exports/output"))
@@ -41,11 +41,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ── lifespan (replaces deprecated @app.on_event) ──────────────────────────────
+# ── lifespan ───────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    logger.info("Database initialised — PDF Table Extractor v0.3.0 ready")
+    logger.info("Database initialised — PDF Table Extractor v0.4.0 ready")
     yield
     logger.info("Shutting down")
 
@@ -53,106 +53,47 @@ async def lifespan(app: FastAPI):
 # ── app ────────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Engineering PDF Table Extractor",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,          # set True only when cookies/auth needed
+    allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
 
-# ── simple UI ──────────────────────────────────────────────────────────────────
+# ── modern UI ──────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>PDF Table Extractor</title>
-  <style>
-    body{font-family:Arial,sans-serif;max-width:640px;margin:60px auto;padding:0 16px}
-    h1{color:#1f4e79}
-    button{background:#1f4e79;color:#fff;border:none;padding:8px 20px;
-           border-radius:4px;cursor:pointer;font-size:14px}
-    button:hover{background:#2e75b6}
-    #status{margin-top:16px;color:#333;font-size:14px}
-    #log{margin-top:8px;font-size:12px;color:#666;white-space:pre-wrap}
-  </style>
-</head>
-<body>
-  <h1>Engineering PDF Table Extractor</h1>
-  <p>Upload a BOQ or Datasheet PDF to extract all tables into Excel.</p>
-
-  <input type="file" id="file" accept="application/pdf">
-  <button onclick="run()">Extract Tables</button>
-
-  <p id="status"></p>
-  <pre id="log"></pre>
-
-  <script>
-  async function run() {
-    const file = document.getElementById("file").files[0];
-    const status = document.getElementById("status");
-    const log = document.getElementById("log");
-
-    if (!file) { status.innerText = "Please choose a PDF file."; return; }
-
-    status.innerText = "Uploading…";
-    log.innerText = "";
-
-    const fd = new FormData();
-    fd.append("file", file);
-
-    const upRes = await fetch("/upload", {method:"POST", body:fd});
-    if (!upRes.ok) {
-      const e = await upRes.json();
-      status.innerText = "Upload error: " + (e.detail || upRes.status);
-      return;
-    }
-    const {job_id} = await upRes.json();
-    log.innerText += `Job ID: ${job_id}\\n`;
-
-    await fetch(`/extract/${job_id}`, {method:"POST"});
-    status.innerText = "Processing…";
-
-    while (true) {
-      await new Promise(r => setTimeout(r, 2500));
-      const s = await (await fetch(`/status/${job_id}`)).json();
-      log.innerText = JSON.stringify(s, null, 2);
-
-      if (s.status === "done") {
-        status.innerText = `Done — ${s.table_count} table(s) found. Downloading…`;
-        window.location.href = `/download/${job_id}`;
-        break;
-      }
-      if (s.status === "error") {
-        status.innerText = "Error: " + s.error;
-        break;
-      }
-      status.innerText = `Processing… (${s.extractor_used || "detecting engine"})`;
-    }
-  }
-  </script>
-</body>
-</html>"""
+    ui_path = Path(__file__).parent / "static_ui.html"
+    if ui_path.exists():
+        return ui_path.read_text(encoding="utf-8")
+    # Fallback if file not found
+    return """<!DOCTYPE html><html><body><h1>Error</h1><p>UI file not found</p></body></html>"""
 
 
 # ── health ─────────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "0.3.0"}
+    return {"status": "ok", "version": "0.4.0"}
 
 
 # ── upload ─────────────────────────────────────────────────────────────────────
 @app.post("/upload")
-async def upload_pdf(request: Request, file: UploadFile = File(...)):
+async def upload_pdf(
+    request: Request,
+    file: UploadFile = File(...),
+    extractor: str = "auto",
+):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+
+    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr"):
+        raise HTTPException(status_code=400, detail="Invalid extractor option.")
 
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > MAX_FILE_SIZE:
@@ -183,23 +124,37 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
         await file.close()
 
     create_job(job_id=job_id, filename=file.filename, file_size_bytes=written)
-    logger.info(f"[{job_id}] Uploaded: {file.filename} ({written:,} bytes)")
+    logger.info(
+        f"[{job_id}] Uploaded: {file.filename} ({written:,} bytes) | extractor={extractor}"
+    )
 
-    return {"job_id": job_id, "filename": file.filename, "file_size_bytes": written}
+    return {
+        "job_id": job_id,
+        "filename": file.filename,
+        "file_size_bytes": written,
+        "extractor": extractor,
+    }
 
 
 # ── extract ────────────────────────────────────────────────────────────────────
 @app.post("/extract/{job_id}")
-async def extract_tables(job_id: str, background_tasks: BackgroundTasks):
+async def extract_tables(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+    extractor: str = "auto",
+):
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
     if job["status"] == "processing":
         return {"job_id": job_id, "status": "processing"}
 
+    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr"):
+        extractor = "auto"
+
     update_job_status(job_id, "processing", started_at=now_iso())
-    logger.info(f"[{job_id}] Extraction queued")
-    background_tasks.add_task(_run_extraction, job_id)
+    logger.info(f"[{job_id}] Extraction queued | extractor={extractor}")
+    background_tasks.add_task(_run_extraction, job_id, extractor)
     return {"job_id": job_id, "status": "processing"}
 
 
@@ -234,7 +189,7 @@ def download_excel(job_id: str):
 
 
 # ── background extraction task ─────────────────────────────────────────────────
-async def _run_extraction(job_id: str) -> None:
+async def _run_extraction(job_id: str, extractor_mode: str = "auto") -> None:
     """
     Runs in a FastAPI BackgroundTask.
     CPU-bound extractor calls are offloaded to a thread pool via
@@ -244,13 +199,15 @@ async def _run_extraction(job_id: str) -> None:
     extractor_used: str | None = None
 
     try:
-        logger.info(f"[{job_id}] Extraction started")
+        logger.info(f"[{job_id}] Extraction started | mode={extractor_mode}")
         pdf_path = str(UPLOAD_DIR / f"{job_id}.pdf")
 
         if not Path(pdf_path).exists():
             raise FileNotFoundError("Uploaded PDF not found.")
 
-        tables, extractor_used = await asyncio.to_thread(_extract_with_fallback, pdf_path)
+        tables, extractor_used = await asyncio.to_thread(
+            _extract_with_fallback, pdf_path, extractor_mode
+        )
 
         for table in tables:
             table["confidence"] = _estimate_confidence(table["dataframe"])
@@ -263,7 +220,8 @@ async def _run_extraction(job_id: str) -> None:
 
         elapsed = round(time.perf_counter() - started, 3)
         update_job_status(
-            job_id, "done",
+            job_id,
+            "done",
             table_count=len(tables),
             extractor_used=extractor_used,
             processing_time_seconds=elapsed,
@@ -277,7 +235,8 @@ async def _run_extraction(job_id: str) -> None:
     except Exception as error:
         elapsed = round(time.perf_counter() - started, 3)
         update_job_status(
-            job_id, "error",
+            job_id,
+            "error",
             error=str(error),
             extractor_used=extractor_used,
             processing_time_seconds=elapsed,
@@ -287,36 +246,57 @@ async def _run_extraction(job_id: str) -> None:
 
 
 # ── extraction pipeline ────────────────────────────────────────────────────────
-def _extract_with_fallback(pdf_path: str) -> tuple[list, str]:
+def _extract_with_fallback(pdf_path: str, mode: str = "auto") -> tuple[list, str]:
     """
     Synchronous extraction pipeline — called inside a thread.
     Returns (tables, extractor_name).
+    
+    Modes:
+      - "auto": Try all in order (pdfplumber → PyMuPDF → OCR)
+      - "pdfplumber": Use only pdfplumber
+      - "pymupdf": Use only PyMuPDF
+      - "ocr": Use only OCR
     """
     # ── Stage 1: pdfplumber (BOQ — line-based tables) ──────────────────────
-    try:
-        from pdfplumber_extractor import PdfPlumberExtractor
-        tables = PdfPlumberExtractor().extract(pdf_path)
-        if tables:
-            logger.info(f"[pipeline] pdfplumber found {len(tables)} table(s)")
-            return tables, "pdfplumber"
-        logger.info("[pipeline] pdfplumber: no tables found, trying PyMuPDF")
-    except Exception as exc:
-        logger.warning(f"[pipeline] pdfplumber failed: {exc}")
+    if mode in ("auto", "pdfplumber"):
+        try:
+            from pdfplumber_extractor import PdfPlumberExtractor
+
+            tables = PdfPlumberExtractor().extract(pdf_path)
+            if tables:
+                logger.info(f"[pipeline] pdfplumber found {len(tables)} table(s)")
+                return tables, "pdfplumber"
+            if mode == "pdfplumber":
+                logger.warning("[pipeline] pdfplumber: no tables found")
+                return [], "pdfplumber"
+            logger.info("[pipeline] pdfplumber: no tables found, trying PyMuPDF")
+        except Exception as exc:
+            logger.warning(f"[pipeline] pdfplumber failed: {exc}")
+            if mode == "pdfplumber":
+                raise
 
     # ── Stage 2: PyMuPDF (Datasheet — multi-column layouts) ────────────────
-    try:
-        from pymupdf_extractor import PyMuPDFExtractor
-        tables = PyMuPDFExtractor().extract(pdf_path)
-        if tables:
-            logger.info(f"[pipeline] PyMuPDF found {len(tables)} table(s)")
-            return tables, "pymupdf"
-        logger.info("[pipeline] PyMuPDF: no tables found, trying OCR")
-    except Exception as exc:
-        logger.warning(f"[pipeline] PyMuPDF failed: {exc}")
+    if mode in ("auto", "pymupdf"):
+        try:
+            from pymupdf_extractor import PyMuPDFExtractor
+
+            tables = PyMuPDFExtractor().extract(pdf_path)
+            if tables:
+                logger.info(f"[pipeline] PyMuPDF found {len(tables)} table(s)")
+                return tables, "pymupdf"
+            if mode == "pymupdf":
+                logger.warning("[pipeline] PyMuPDF: no tables found")
+                return [], "pymupdf"
+            logger.info("[pipeline] PyMuPDF: no tables found, trying OCR")
+        except Exception as exc:
+            logger.warning(f"[pipeline] PyMuPDF failed: {exc}")
+            if mode == "pymupdf":
+                raise
 
     # ── Stage 3: OCR Fallback (scanned PDFs) ───────────────────────────────
     try:
         from ocr_extractor import OcrFallbackExtractor
+
         tables = OcrFallbackExtractor().extract(pdf_path)
         if tables:
             logger.info(f"[pipeline] OCR found {len(tables)} table(s)")
