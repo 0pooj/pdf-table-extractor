@@ -1,10 +1,10 @@
 """
-Engineering PDF Table Extractor — v0.5.0
+Engineering PDF Table Extractor — v0.6.0
 FastAPI application entry point with modern UI and extractor selection.
 
 Extraction pipeline:
-  1. pdfplumber   — digital PDFs with drawn table borders (BOQ)
-  2. Camelot      — accurate grid-based extraction (Lattice/Stream)
+  1. BOQ Parser   — coordinate-based text reconstruction (for fragmented BOQs)
+  2. pdfplumber   — digital PDFs with drawn table borders
   3. PyMuPDF      — digital PDFs with complex layouts (Datasheet)
   4. OCR Fallback — scanned / image-based PDFs (Tesseract ara+eng)
 """
@@ -95,7 +95,7 @@ async def upload_pdf(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
 
-    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr", "camelot"):
+    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr", "boq"):
         raise HTTPException(status_code=400, detail="Invalid extractor option.")
 
     content_length = request.headers.get("content-length")
@@ -168,7 +168,7 @@ async def extract_tables(
     if job["status"] == "processing":
         return {"job_id": job_id, "status": "processing"}
 
-    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr", "camelot"):
+    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr", "boq"):
         extractor = "auto"
 
     update_job_status(job_id, "processing", started_at=now_iso())
@@ -271,13 +271,25 @@ def _extract_with_fallback(pdf_path: str, mode: str = "auto") -> tuple[list, str
     Returns (tables, extractor_name).
     
     Modes:
-      - "auto": Try all in order (pdfplumber → Camelot → PyMuPDF → OCR)
+      - "auto": Try all in order (BOQ Parser → pdfplumber → PyMuPDF → OCR)
+      - "boq": Use coordinate-based BOQ Parser
       - "pdfplumber": Use only pdfplumber
-      - "camelot": Use only Camelot
       - "pymupdf": Use only PyMuPDF
       - "ocr": Use only OCR
     """
-    # ── Stage 1: pdfplumber (BOQ — line-based tables) ──────────────────────
+    # ── Stage 1: BOQ Layout Parser (For fragmented text BOQs) ──────────────
+    if mode in ("auto", "boq"):
+        try:
+            from boq_layout_parser import BOQLayoutParser
+            tables = BOQLayoutParser().extract(pdf_path)
+            if tables:
+                return tables, "boq_parser"
+            if mode == "boq": return [], "boq_parser"
+        except Exception as exc:
+            logger.warning(f"[pipeline] BOQ Parser failed: {exc}")
+            if mode == "boq": raise
+
+    # ── Stage 2: pdfplumber (BOQ — line-based tables) ──────────────────────
     if mode in ("auto", "pdfplumber"):
         try:
             from pdfplumber_extractor import PdfPlumberExtractor
@@ -288,18 +300,6 @@ def _extract_with_fallback(pdf_path: str, mode: str = "auto") -> tuple[list, str
         except Exception as exc:
             logger.warning(f"[pipeline] pdfplumber failed: {exc}")
             if mode == "pdfplumber": raise
-
-    # ── Stage 2: Camelot (Accurate Grid/Lattice) ───────────────────────────
-    if mode in ("auto", "camelot"):
-        try:
-            from camelot_extractor import CamelotExtractor
-            tables = CamelotExtractor().extract(pdf_path)
-            if tables:
-                return tables, "camelot"
-            if mode == "camelot": return [], "camelot"
-        except Exception as exc:
-            logger.warning(f"[pipeline] Camelot failed: {exc}")
-            if mode == "camelot": raise
 
     # ── Stage 3: PyMuPDF (Datasheet — complex layouts) ─────────────────────
     if mode in ("auto", "pymupdf"):
