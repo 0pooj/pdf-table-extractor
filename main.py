@@ -1,11 +1,12 @@
 """
-Engineering PDF Table Extractor — v0.4.0
+Engineering PDF Table Extractor — v0.5.0
 FastAPI application entry point with modern UI and extractor selection.
 
-Extraction pipeline (lightest → heaviest):
+Extraction pipeline:
   1. pdfplumber   — digital PDFs with drawn table borders (BOQ)
-  2. PyMuPDF      — digital PDFs with complex layouts (Datasheet)
-  3. OCR Fallback — scanned / image-based PDFs (Tesseract ara+eng)
+  2. Camelot      — accurate grid-based extraction (Lattice/Stream)
+  3. PyMuPDF      — digital PDFs with complex layouts (Datasheet)
+  4. OCR Fallback — scanned / image-based PDFs (Tesseract ara+eng)
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
 
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
 MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
+MAX_PAGES = 100
 
 FILE_TTL_HOURS = int(os.getenv("FILE_TTL_HOURS", "24"))
 
@@ -89,10 +91,11 @@ async def upload_pdf(
     file: UploadFile = File(...),
     extractor: str = "auto",
 ):
+    import fitz
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
 
-    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr"):
+    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr", "camelot"):
         raise HTTPException(status_code=400, detail="Invalid extractor option.")
 
     content_length = request.headers.get("content-length")
@@ -123,6 +126,22 @@ async def upload_pdf(
     finally:
         await file.close()
 
+    # Verify page count
+    try:
+        doc = fitz.open(dest)
+        page_count = len(doc)
+        doc.close()
+        if page_count > MAX_PAGES:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"الملف كبير جداً ({page_count} صفحة). الحد الأقصى المسموح به هو {MAX_PAGES} صفحة.",
+            )
+    except Exception as e:
+        if isinstance(e, HTTPException): raise
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail="تعذر قراءة ملف PDF أو الملف تالف.")
+
     create_job(job_id=job_id, filename=file.filename, file_size_bytes=written)
     logger.info(
         f"[{job_id}] Uploaded: {file.filename} ({written:,} bytes) | extractor={extractor}"
@@ -149,7 +168,7 @@ async def extract_tables(
     if job["status"] == "processing":
         return {"job_id": job_id, "status": "processing"}
 
-    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr"):
+    if extractor not in ("auto", "pdfplumber", "pymupdf", "ocr", "camelot"):
         extractor = "auto"
 
     update_job_status(job_id, "processing", started_at=now_iso())
@@ -252,8 +271,9 @@ def _extract_with_fallback(pdf_path: str, mode: str = "auto") -> tuple[list, str
     Returns (tables, extractor_name).
     
     Modes:
-      - "auto": Try all in order (pdfplumber → PyMuPDF → OCR)
+      - "auto": Try all in order (pdfplumber → Camelot → PyMuPDF → OCR)
       - "pdfplumber": Use only pdfplumber
+      - "camelot": Use only Camelot
       - "pymupdf": Use only PyMuPDF
       - "ocr": Use only OCR
     """
@@ -261,37 +281,37 @@ def _extract_with_fallback(pdf_path: str, mode: str = "auto") -> tuple[list, str
     if mode in ("auto", "pdfplumber"):
         try:
             from pdfplumber_extractor import PdfPlumberExtractor
-
             tables = PdfPlumberExtractor().extract(pdf_path)
             if tables:
-                logger.info(f"[pipeline] pdfplumber found {len(tables)} table(s)")
                 return tables, "pdfplumber"
-            if mode == "pdfplumber":
-                logger.warning("[pipeline] pdfplumber: no tables found")
-                return [], "pdfplumber"
-            logger.info("[pipeline] pdfplumber: no tables found, trying PyMuPDF")
+            if mode == "pdfplumber": return [], "pdfplumber"
         except Exception as exc:
             logger.warning(f"[pipeline] pdfplumber failed: {exc}")
-            if mode == "pdfplumber":
-                raise
+            if mode == "pdfplumber": raise
 
-    # ── Stage 2: PyMuPDF (Datasheet — multi-column layouts) ────────────────
+    # ── Stage 2: Camelot (Accurate Grid/Lattice) ───────────────────────────
+    if mode in ("auto", "camelot"):
+        try:
+            from camelot_extractor import CamelotExtractor
+            tables = CamelotExtractor().extract(pdf_path)
+            if tables:
+                return tables, "camelot"
+            if mode == "camelot": return [], "camelot"
+        except Exception as exc:
+            logger.warning(f"[pipeline] Camelot failed: {exc}")
+            if mode == "camelot": raise
+
+    # ── Stage 3: PyMuPDF (Datasheet — complex layouts) ─────────────────────
     if mode in ("auto", "pymupdf"):
         try:
             from pymupdf_extractor import PyMuPDFExtractor
-
             tables = PyMuPDFExtractor().extract(pdf_path)
             if tables:
-                logger.info(f"[pipeline] PyMuPDF found {len(tables)} table(s)")
                 return tables, "pymupdf"
-            if mode == "pymupdf":
-                logger.warning("[pipeline] PyMuPDF: no tables found")
-                return [], "pymupdf"
-            logger.info("[pipeline] PyMuPDF: no tables found, trying OCR")
+            if mode == "pymupdf": return [], "pymupdf"
         except Exception as exc:
             logger.warning(f"[pipeline] PyMuPDF failed: {exc}")
-            if mode == "pymupdf":
-                raise
+            if mode == "pymupdf": raise
 
     # ── Stage 3: OCR Fallback (scanned PDFs) ───────────────────────────────
     try:

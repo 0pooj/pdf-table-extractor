@@ -240,7 +240,7 @@
               <div class="file-icon">📁</div>
               <div class="file-text">
                 <div class="main">اضغط لاختيار ملف أو اسحب الملف هنا</div>
-                <div class="sub">PDF فقط (حد أقصى 100 MB)</div>
+                <div class="sub">PDF فقط (حد أقصى 100 صفحة / 100 MB)</div>
               </div>
               <div class="file-name" id="fileName"></div>
             </div>
@@ -255,6 +255,13 @@
             <input type="radio" id="auto" name="extractor" value="auto" checked>
             <label for="auto" class="radio-label">
               تلقائي
+              <span class="radio-dot"></span>
+            </label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="camelot" name="extractor" value="camelot">
+            <label for="camelot" class="radio-label">
+              Camelot
               <span class="radio-dot"></span>
             </label>
           </div>
@@ -284,7 +291,7 @@
 
       <div class="button-group">
         <button type="submit" class="btn btn-primary" id="submitBtn">استخرج الجداول</button>
-        <button type="reset" class="btn btn-secondary">مسح</button>
+        <button type="button" class="btn btn-secondary" id="resetBtn">مسح</button>
       </div>
     </form>
 
@@ -298,8 +305,18 @@
     const fileName = document.getElementById('fileName');
     const statusDiv = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.getElementById('resetBtn');
 
-    // File input handling
+    function resetUI() {
+      form.reset();
+      fileName.textContent = '';
+      fileLabel.classList.remove('active');
+      submitBtn.disabled = false;
+      statusDiv.classList.remove('show');
+    }
+
+    resetBtn.addEventListener('click', resetUI);
+
     pdfFile.addEventListener('change', (e) => {
       if (e.target.files[0]) {
         fileName.textContent = e.target.files[0].name;
@@ -307,7 +324,6 @@
       }
     });
 
-    // Drag and drop
     fileLabel.addEventListener('dragover', (e) => {
       e.preventDefault();
       fileLabel.style.borderColor = '#764ba2';
@@ -329,7 +345,6 @@
       }
     });
 
-    // Form submission
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const file = pdfFile.files[0];
@@ -341,7 +356,7 @@
       }
 
       submitBtn.disabled = true;
-      showStatus('جاري رفع الملف...', 'info');
+      showStatus('جاري رفع الملف والتحقق منه...', 'info');
 
       const fd = new FormData();
       fd.append('file', file);
@@ -350,8 +365,8 @@
       try {
         const upRes = await fetch('/upload', { method: 'POST', body: fd });
         if (!upRes.ok) {
-          const e = await upRes.json();
-          throw new Error(e.detail || 'خطأ في الرفع');
+          const errData = await upRes.json();
+          throw new Error(errData.detail || 'خطأ في الرفع');
         }
 
         const { job_id } = await upRes.json();
@@ -360,7 +375,7 @@
         await fetch(`/extract/${job_id}?extractor=${extractor}`, { method: 'POST' });
 
         let attempts = 0;
-        const maxAttempts = 120; // 5 minutes max
+        const maxAttempts = 600; // 20 minutes max for heavy OCR/Camelot
 
         const pollStatus = async () => {
           attempts++;
@@ -377,12 +392,13 @@
             showStatus(`✓ تم استخراج ${s.table_count} جدول بنجاح! جاري التحميل...`, 'success');
             setTimeout(() => {
               window.location.href = `/download/${job_id}`;
-            }, 1000);
+              submitBtn.disabled = false; // Re-enable for next use
+            }, 2000);
           } else if (s.status === 'error') {
             showStatus(`✗ خطأ: ${s.error}`, 'error');
             submitBtn.disabled = false;
           } else {
-            const engine = s.extractor_used || 'كشف تلقائي';
+            const engine = s.extractor_used || 'جاري التحليل';
             showStatus(`جاري المعالجة... (${engine})`, 'info');
             setTimeout(pollStatus, 2000);
           }
