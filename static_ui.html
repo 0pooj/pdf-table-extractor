@@ -3,16 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مستخرج جداول PDF الهندسية</title>
+  <title>مستخرج جداول PDF الهندسية الاحترافي</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -21,240 +17,130 @@
     }
     .container {
       background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 600px;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      max-width: 650px;
       width: 100%;
       padding: 40px;
     }
-    .header {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    .header h1 {
-      color: #1f4e79;
-      font-size: 28px;
-      margin-bottom: 8px;
-      font-weight: 700;
-    }
-    .header p {
-      color: #666;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    .form-group {
-      margin-bottom: 24px;
-    }
-    .form-group label {
-      display: block;
-      color: #333;
-      font-weight: 600;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .file-input-wrapper {
-      position: relative;
-      display: inline-block;
-      width: 100%;
-    }
-    .file-input-wrapper input[type="file"] {
-      display: none;
-    }
+    .header { text-align: center; margin-bottom: 35px; }
+    .header h1 { color: #1e3a8a; font-size: 30px; margin-bottom: 10px; font-weight: 800; }
+    .header p { color: #4b5563; font-size: 15px; line-height: 1.6; }
+    .form-group { margin-bottom: 25px; }
+    .form-group label { display: block; color: #1f2937; font-weight: 700; margin-bottom: 10px; font-size: 14px; }
+    .file-input-wrapper { position: relative; display: inline-block; width: 100%; }
+    .file-input-wrapper input[type="file"] { display: none; }
     .file-input-label {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      border: 2px dashed #667eea;
-      border-radius: 8px;
-      padding: 32px 20px;
+      border: 2px dashed #3b82f6;
+      border-radius: 12px;
+      padding: 40px 20px;
       cursor: pointer;
       transition: all 0.3s ease;
-      background: #f8f9ff;
+      background: #eff6ff;
     }
-    .file-input-label:hover {
-      border-color: #764ba2;
-      background: #f0f2ff;
-    }
-    .file-input-label.active {
-      border-color: #10b981;
-      background: #f0fdf4;
-    }
-    .file-icon {
-      font-size: 32px;
-      margin-bottom: 8px;
-    }
-    .file-text {
-      text-align: center;
-    }
-    .file-text .main {
-      color: #333;
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-    .file-text .sub {
-      color: #999;
-      font-size: 12px;
-    }
-    .file-name {
-      color: #10b981;
-      font-weight: 600;
-      font-size: 13px;
-      margin-top: 8px;
-    }
-    .extractor-options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .radio-option {
-      position: relative;
-    }
-    .radio-option input[type="radio"] {
-      display: none;
-    }
+    .file-input-label:hover { border-color: #1d4ed8; background: #dbeafe; }
+    .file-input-label.active { border-color: #10b981; background: #f0fdf4; }
+    .file-icon { font-size: 40px; margin-bottom: 15px; }
+    .file-text { text-align: center; }
+    .file-text .main { color: #111827; font-weight: 700; font-size: 15px; margin-bottom: 5px; }
+    .file-text .sub { color: #6b7280; font-size: 12px; }
+    .file-name { color: #059669; font-weight: 700; font-size: 14px; margin-top: 10px; }
+    .extractor-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .radio-option { position: relative; }
+    .radio-option input[type="radio"] { display: none; }
     .radio-label {
       display: flex;
       align-items: center;
-      padding: 12px 16px;
+      padding: 15px;
       border: 2px solid #e5e7eb;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
       transition: all 0.3s ease;
-      font-size: 13px;
-      font-weight: 500;
-      color: #666;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4b5563;
     }
     .radio-option input[type="radio"]:checked + .radio-label {
-      border-color: #667eea;
-      background: #f0f2ff;
-      color: #667eea;
+      border-color: #3b82f6;
+      background: #eff6ff;
+      color: #1e3a8a;
     }
     .radio-dot {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       border: 2px solid #d1d5db;
       border-radius: 50%;
-      margin-left: 8px;
+      margin-left: 10px;
       transition: all 0.3s ease;
     }
     .radio-option input[type="radio"]:checked + .radio-label .radio-dot {
-      border-color: #667eea;
-      background: #667eea;
+      border-color: #3b82f6;
+      background: #3b82f6;
+      box-shadow: inset 0 0 0 3px #eff6ff;
     }
-    .button-group {
-      display: flex;
-      gap: 12px;
-      margin-top: 32px;
-    }
+    .button-group { display: flex; gap: 15px; margin-top: 35px; }
     .btn {
       flex: 1;
-      padding: 12px 24px;
+      padding: 15px 25px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.3s ease;
     }
-    .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-    }
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .btn-secondary {
-      background: #f3f4f6;
-      color: #666;
-    }
-    .btn-secondary:hover {
-      background: #e5e7eb;
-    }
-    .status {
-      margin-top: 24px;
-      padding: 16px;
-      border-radius: 8px;
-      display: none;
-    }
-    .status.show {
-      display: block;
-    }
-    .status.info {
-      background: #eff6ff;
-      color: #0c4a6e;
-      border-left: 4px solid #0284c7;
-    }
-    .status.success {
-      background: #f0fdf4;
-      color: #15803d;
-      border-left: 4px solid #10b981;
-    }
-    .status.error {
-      background: #fef2f2;
-      color: #991b1b;
-      border-left: 4px solid #ef4444;
-    }
-    .status-text {
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    .progress-bar {
-      width: 100%;
-      height: 4px;
-      background: #e5e7eb;
-      border-radius: 2px;
-      margin-top: 12px;
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #2563eb; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #4b5563; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .status { margin-top: 30px; padding: 20px; border-radius: 12px; display: none; }
+    .status.show { display: block; }
+    .status.info { background: #eff6ff; color: #1e40af; border-right: 5px solid #3b82f6; }
+    .status.success { background: #f0fdf4; color: #166534; border-right: 5px solid #10b981; }
+    .status.error { background: #fef2f2; color: #991b1b; border-right: 5px solid #ef4444; }
+    .progress-bar { width: 100%; height: 6px; background: #d1d5db; border-radius: 3px; margin-top: 15px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #3b82f6; width: 30%; animation: loading 2s linear infinite; }
+    @keyframes loading {
+      0% { transform: translateX(300%); }
+      100% { transform: translateX(-100%); }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>📊 مستخرج جداول PDF</h1>
-      <p>استخرج الجداول من ملفات BOQ والمواصفات الفنية بسهولة واحترافية</p>
+      <h1>🏗️ مستخرج المستندات الهندسية</h1>
+      <p>نظام ذكي لتحليل واستخراج الجداول من ملفات BOQ والمواصفات والكتالوجات</p>
     </div>
 
     <form id="extractForm">
       <div class="form-group">
-        <label>اختر ملف PDF</label>
+        <label>ملف الـ PDF</label>
         <div class="file-input-wrapper">
           <input type="file" id="pdfFile" accept="application/pdf" required>
           <label for="pdfFile" class="file-input-label" id="fileLabel">
-            <div>
-              <div class="file-icon">📁</div>
-              <div class="file-text">
-                <div class="main">اضغط لاختيار ملف أو اسحب الملف هنا</div>
-                <div class="sub">PDF فقط (حد أقصى 100 صفحة / 100 MB)</div>
-              </div>
-              <div class="file-name" id="fileName"></div>
+            <div class="file-icon">📄</div>
+            <div class="file-text">
+              <div class="main">اسحب الملف هنا أو اضغط للاختيار</div>
+              <div class="sub">PDF فقط (حد أقصى 100 صفحة)</div>
             </div>
+            <div class="file-name" id="fileName"></div>
           </label>
         </div>
       </div>
 
       <div class="form-group">
-        <label>اختر محرك الاستخراج</label>
+        <label>نوع المستند (المحرك)</label>
         <div class="extractor-options">
           <div class="radio-option">
             <input type="radio" id="auto" name="extractor" value="auto" checked>
             <label for="auto" class="radio-label">
-              تلقائي
+              تلقائي (الذكي)
               <span class="radio-dot"></span>
             </label>
           </div>
@@ -266,23 +152,23 @@
             </label>
           </div>
           <div class="radio-option">
-            <input type="radio" id="pdfplumber" name="extractor" value="pdfplumber">
-            <label for="pdfplumber" class="radio-label">
-              pdfplumber
+            <input type="radio" id="datasheet" name="extractor" value="datasheet">
+            <label for="datasheet" class="radio-label">
+              Datasheet
               <span class="radio-dot"></span>
             </label>
           </div>
           <div class="radio-option">
-            <input type="radio" id="pymupdf" name="extractor" value="pymupdf">
-            <label for="pymupdf" class="radio-label">
-              PyMuPDF
+            <input type="radio" id="catalog" name="extractor" value="catalog">
+            <label for="catalog" class="radio-label">
+              Catalog
               <span class="radio-dot"></span>
             </label>
           </div>
           <div class="radio-option">
-            <input type="radio" id="ocr" name="extractor" value="ocr">
-            <label for="ocr" class="radio-label">
-              OCR
+            <input type="radio" id="specsheet" name="extractor" value="specsheet">
+            <label for="specsheet" class="radio-label">
+              Spec Sheet
               <span class="radio-dot"></span>
             </label>
           </div>
@@ -290,7 +176,7 @@
       </div>
 
       <div class="button-group">
-        <button type="submit" class="btn btn-primary" id="submitBtn">استخرج الجداول</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">بدء التحليل والاستخراج</button>
         <button type="button" class="btn btn-secondary" id="resetBtn">مسح</button>
       </div>
     </form>
@@ -301,21 +187,10 @@
   <script>
     const form = document.getElementById('extractForm');
     const pdfFile = document.getElementById('pdfFile');
-    const fileLabel = document.getElementById('fileLabel');
     const fileName = document.getElementById('fileName');
+    const fileLabel = document.getElementById('fileLabel');
     const statusDiv = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    function resetUI() {
-      form.reset();
-      fileName.textContent = '';
-      fileLabel.classList.remove('active');
-      submitBtn.disabled = false;
-      statusDiv.classList.remove('show');
-    }
-
-    resetBtn.addEventListener('click', resetUI);
 
     pdfFile.addEventListener('change', (e) => {
       if (e.target.files[0]) {
@@ -324,25 +199,12 @@
       }
     });
 
-    fileLabel.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      fileLabel.style.borderColor = '#764ba2';
-      fileLabel.style.background = '#f0f2ff';
-    });
-
-    fileLabel.addEventListener('dragleave', () => {
-      fileLabel.style.borderColor = '#667eea';
-      fileLabel.style.background = '#f8f9ff';
-    });
-
-    fileLabel.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const files = e.dataTransfer.files;
-      if (files[0] && files[0].type === 'application/pdf') {
-        pdfFile.files = files;
-        fileName.textContent = files[0].name;
-        fileLabel.classList.add('active');
-      }
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      form.reset();
+      fileName.textContent = '';
+      fileLabel.classList.remove('active');
+      statusDiv.classList.remove('show');
+      submitBtn.disabled = false;
     });
 
     form.addEventListener('submit', async (e) => {
@@ -350,73 +212,52 @@
       const file = pdfFile.files[0];
       const extractor = document.querySelector('input[name="extractor"]:checked').value;
 
-      if (!file) {
-        showStatus('الرجاء اختيار ملف PDF', 'error');
-        return;
-      }
-
       submitBtn.disabled = true;
-      showStatus('جاري رفع الملف والتحقق منه...', 'info');
+      showStatus('جاري رفع الملف وتحليله...', 'info');
 
       const fd = new FormData();
       fd.append('file', file);
       fd.append('extractor', extractor);
 
       try {
-        const upRes = await fetch('/upload', { method: 'POST', body: fd });
-        if (!upRes.ok) {
-          const errData = await upRes.json();
-          throw new Error(errData.detail || 'خطأ في الرفع');
-        }
-
-        const { job_id } = await upRes.json();
-        showStatus(`جاري معالجة الملف...`, 'info');
-
-        await fetch(`/extract/${job_id}?extractor=${extractor}`, { method: 'POST' });
-
-        let attempts = 0;
-        const maxAttempts = 600; // 20 minutes max for heavy OCR/Camelot
-
-        const pollStatus = async () => {
-          attempts++;
-          if (attempts > maxAttempts) {
-            showStatus('انتهت مهلة المعالجة. يرجى المحاولة مرة أخرى.', 'error');
-            submitBtn.disabled = false;
-            return;
-          }
-
-          const sRes = await fetch(`/status/${job_id}`);
-          const s = await sRes.json();
-
-          if (s.status === 'done') {
-            showStatus(`✓ تم استخراج ${s.table_count} جدول بنجاح! جاري التحميل...`, 'success');
-            setTimeout(() => {
-              window.location.href = `/download/${job_id}`;
-              submitBtn.disabled = false; // Re-enable for next use
-            }, 2000);
-          } else if (s.status === 'error') {
-            showStatus(`✗ خطأ: ${s.error}`, 'error');
-            submitBtn.disabled = false;
-          } else {
-            const engine = s.extractor_used || 'جاري التحليل';
-            showStatus(`جاري المعالجة... (${engine})`, 'info');
-            setTimeout(pollStatus, 2000);
-          }
-        };
-
-        pollStatus();
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error(await res.text());
+        
+        const { job_id } = await res.json();
+        pollStatus(job_id);
       } catch (err) {
         showStatus(`خطأ: ${err.message}`, 'error');
         submitBtn.disabled = false;
       }
     });
 
-    function showStatus(message, type) {
+    async function pollStatus(job_id) {
+      try {
+        const res = await fetch(`/status/${job_id}`);
+        const data = await res.json();
+
+        if (data.status === 'completed') {
+          showStatus(`✓ تم الاستخراج بنجاح باستخدام ${data.extractor_used}! جاري التحميل...`, 'success');
+          setTimeout(() => {
+            window.location.href = `/download/${job_id}`;
+            submitBtn.disabled = false;
+          }, 2000);
+        } else if (data.status === 'failed') {
+          showStatus(`✗ فشل: ${data.error}`, 'error');
+          submitBtn.disabled = false;
+        } else {
+          showStatus(`جاري المعالجة... الحالة: ${data.status}`, 'info');
+          setTimeout(() => pollStatus(job_id), 2000);
+        }
+      } catch (err) {
+        showStatus('خطأ في الاتصال بالخادم', 'error');
+        submitBtn.disabled = false;
+      }
+    }
+
+    function showStatus(msg, type) {
       statusDiv.className = `status show ${type}`;
-      statusDiv.innerHTML = `
-        <div class="status-text">${message}</div>
-        ${type === 'info' ? '<div class="progress-bar"><div class="progress-fill"></div></div>' : ''}
-      `;
+      statusDiv.innerHTML = `<div>${msg}</div>` + (type === 'info' ? '<div class="progress-bar"><div class="progress-fill"></div></div>' : '');
     }
   </script>
 </body>
