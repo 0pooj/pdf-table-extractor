@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مستخرج جداول PDF الهندسية الاحترافي</title>
+  <title>مستخرج المستندات الهندسية</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -14,7 +14,10 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      transition: direction 0.3s ease;
     }
+    body.en { direction: ltr; }
+    body.ar { direction: rtl; }
     .container {
       background: white;
       border-radius: 20px;
@@ -22,6 +25,27 @@
       max-width: 650px;
       width: 100%;
       padding: 40px;
+    }
+    .language-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    body.en .language-toggle { right: auto; left: 20px; }
+    .toggle-btn {
+      background: white;
+      border: 2px solid #3b82f6;
+      color: #3b82f6;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.3s ease;
+    }
+    .toggle-btn:hover {
+      background: #3b82f6;
+      color: white;
     }
     .header { text-align: center; margin-bottom: 35px; }
     .header h1 { color: #1e3a8a; font-size: 30px; margin-bottom: 10px; font-weight: 800; }
@@ -77,6 +101,7 @@
       margin-left: 10px;
       transition: all 0.3s ease;
     }
+    body.en .radio-dot { margin-left: 0; margin-right: 10px; }
     .radio-option input[type="radio"]:checked + .radio-label .radio-dot {
       border-color: #3b82f6;
       background: #3b82f6;
@@ -101,8 +126,11 @@
     .status { margin-top: 30px; padding: 20px; border-radius: 12px; display: none; }
     .status.show { display: block; }
     .status.info { background: #eff6ff; color: #1e40af; border-right: 5px solid #3b82f6; }
+    body.en .status.info { border-right: none; border-left: 5px solid #3b82f6; }
     .status.success { background: #f0fdf4; color: #166534; border-right: 5px solid #10b981; }
+    body.en .status.success { border-right: none; border-left: 5px solid #10b981; }
     .status.error { background: #fef2f2; color: #991b1b; border-right: 5px solid #ef4444; }
+    body.en .status.error { border-right: none; border-left: 5px solid #ef4444; }
     .progress-bar { width: 100%; height: 6px; background: #d1d5db; border-radius: 3px; margin-top: 15px; overflow: hidden; }
     .progress-fill { height: 100%; background: #3b82f6; width: 30%; animation: loading 2s linear infinite; }
     @keyframes loading {
@@ -111,23 +139,27 @@
     }
   </style>
 </head>
-<body>
+<body class="ar">
+  <div class="language-toggle">
+    <button class="toggle-btn" id="langToggle">English</button>
+  </div>
+
   <div class="container">
     <div class="header">
-      <h1>🏗️ مستخرج المستندات الهندسية</h1>
-      <p>نظام ذكي لتحليل واستخراج الجداول من ملفات BOQ والمواصفات والكتالوجات</p>
+      <h1 id="title">🏗️ مستخرج المستندات الهندسية</h1>
+      <p id="subtitle">نظام ذكي لتحليل واستخراج الجداول من ملفات BOQ والمواصفات والكتالوجات</p>
     </div>
 
     <form id="extractForm">
       <div class="form-group">
-        <label>ملف الـ PDF</label>
+        <label id="selectFileLabel">ملف الـ PDF</label>
         <div class="file-input-wrapper">
           <input type="file" id="pdfFile" accept="application/pdf" required>
           <label for="pdfFile" class="file-input-label" id="fileLabel">
             <div class="file-icon">📄</div>
             <div class="file-text">
-              <div class="main">اسحب الملف هنا أو اضغط للاختيار</div>
-              <div class="sub">PDF فقط (حد أقصى 100 صفحة)</div>
+              <div class="main" id="dragDropMain">اسحب الملف هنا أو اضغط للاختيار</div>
+              <div class="sub" id="dragDropSub">PDF فقط (حد أقصى 100 صفحة)</div>
             </div>
             <div class="file-name" id="fileName"></div>
           </label>
@@ -135,40 +167,40 @@
       </div>
 
       <div class="form-group">
-        <label>نوع المستند (المحرك)</label>
+        <label id="selectExtractorLabel">نوع المستند (المحرك)</label>
         <div class="extractor-options">
           <div class="radio-option">
             <input type="radio" id="auto" name="extractor" value="auto" checked>
-            <label for="auto" class="radio-label">
-              تلقائي (الذكي)
+            <label for="auto" class="radio-label" id="autoLabel">
+              <span id="autoText">تلقائي (الذكي)</span>
               <span class="radio-dot"></span>
             </label>
           </div>
           <div class="radio-option">
             <input type="radio" id="boq" name="extractor" value="boq">
-            <label for="boq" class="radio-label">
-              BOQ Parser
+            <label for="boq" class="radio-label" id="boqLabel">
+              <span id="boqText">BOQ Parser</span>
               <span class="radio-dot"></span>
             </label>
           </div>
           <div class="radio-option">
             <input type="radio" id="datasheet" name="extractor" value="datasheet">
-            <label for="datasheet" class="radio-label">
-              Datasheet
+            <label for="datasheet" class="radio-label" id="datasheetLabel">
+              <span id="datasheetText">Datasheet</span>
               <span class="radio-dot"></span>
             </label>
           </div>
           <div class="radio-option">
             <input type="radio" id="catalog" name="extractor" value="catalog">
-            <label for="catalog" class="radio-label">
-              Catalog
+            <label for="catalog" class="radio-label" id="catalogLabel">
+              <span id="catalogText">Catalog</span>
               <span class="radio-dot"></span>
             </label>
           </div>
           <div class="radio-option">
             <input type="radio" id="specsheet" name="extractor" value="specsheet">
-            <label for="specsheet" class="radio-label">
-              Spec Sheet
+            <label for="specsheet" class="radio-label" id="specsheetLabel">
+              <span id="specsheetText">Spec Sheet</span>
               <span class="radio-dot"></span>
             </label>
           </div>
@@ -185,6 +217,49 @@
   </div>
 
   <script>
+    let currentLang = 'ar';
+    const translations = {};
+
+    // Load translations
+    fetch('/translations')
+      .then(r => r.json())
+      .then(data => {
+        Object.assign(translations, data);
+      });
+
+    function t(key, replacements = {}) {
+      let text = translations[currentLang]?.[key] || key;
+      for (const [k, v] of Object.entries(replacements)) {
+        text = text.replace(`{${k}}`, v);
+      }
+      return text;
+    }
+
+    function updateUI() {
+      document.getElementById('title').textContent = '🏗️ ' + t('title');
+      document.getElementById('subtitle').textContent = t('subtitle');
+      document.getElementById('selectFileLabel').textContent = t('selectFile');
+      document.getElementById('dragDropMain').textContent = t('dragDrop');
+      document.getElementById('dragDropSub').textContent = t('fileLimit');
+      document.getElementById('selectExtractorLabel').textContent = t('selectExtractor');
+      document.getElementById('autoText').textContent = t('auto');
+      document.getElementById('boqText').textContent = t('boq');
+      document.getElementById('datasheetText').textContent = t('datasheet');
+      document.getElementById('catalogText').textContent = t('catalog');
+      document.getElementById('specsheetText').textContent = t('specsheet');
+      document.getElementById('submitBtn').textContent = t('extract');
+      document.getElementById('resetBtn').textContent = t('reset');
+      document.getElementById('langToggle').textContent = currentLang === 'ar' ? 'English' : 'العربية';
+    }
+
+    document.getElementById('langToggle').addEventListener('click', () => {
+      currentLang = currentLang === 'ar' ? 'en' : 'ar';
+      document.documentElement.lang = currentLang;
+      document.body.classList.toggle('en');
+      document.body.classList.toggle('ar');
+      updateUI();
+    });
+
     const form = document.getElementById('extractForm');
     const pdfFile = document.getElementById('pdfFile');
     const fileName = document.getElementById('fileName');
@@ -212,8 +287,13 @@
       const file = pdfFile.files[0];
       const extractor = document.querySelector('input[name="extractor"]:checked').value;
 
+      if (!file) {
+        showStatus(t('selectPDF'), 'error');
+        return;
+      }
+
       submitBtn.disabled = true;
-      showStatus('جاري رفع الملف وتحليله...', 'info');
+      showStatus(t('uploading'), 'info');
 
       const fd = new FormData();
       fd.append('file', file);
@@ -226,7 +306,7 @@
         const { job_id } = await res.json();
         pollStatus(job_id);
       } catch (err) {
-        showStatus(`خطأ: ${err.message}`, 'error');
+        showStatus(t('error', { error: err.message }), 'error');
         submitBtn.disabled = false;
       }
     });
@@ -237,20 +317,20 @@
         const data = await res.json();
 
         if (data.status === 'completed') {
-          showStatus(`✓ تم الاستخراج بنجاح باستخدام ${data.extractor_used}! جاري التحميل...`, 'success');
+          showStatus(t('success', { parser: data.extractor_used }), 'success');
           setTimeout(() => {
             window.location.href = `/download/${job_id}`;
             submitBtn.disabled = false;
           }, 2000);
         } else if (data.status === 'failed') {
-          showStatus(`✗ فشل: ${data.error}`, 'error');
+          showStatus(t('error', { error: data.error }), 'error');
           submitBtn.disabled = false;
         } else {
-          showStatus(`جاري المعالجة... الحالة: ${data.status}`, 'info');
+          showStatus(t('processing', { status: data.status }), 'info');
           setTimeout(() => pollStatus(job_id), 2000);
         }
       } catch (err) {
-        showStatus('خطأ في الاتصال بالخادم', 'error');
+        showStatus(t('connectionError'), 'error');
         submitBtn.disabled = false;
       }
     }
@@ -259,6 +339,9 @@
       statusDiv.className = `status show ${type}`;
       statusDiv.innerHTML = `<div>${msg}</div>` + (type === 'info' ? '<div class="progress-bar"><div class="progress-fill"></div></div>' : '');
     }
+
+    // Initialize UI
+    updateUI();
   </script>
 </body>
 </html>

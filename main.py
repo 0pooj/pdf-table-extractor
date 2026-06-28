@@ -39,6 +39,12 @@ async def index():
     with open("/home/ubuntu/pdf-table-extractor/static_ui.html", "r") as f:
         return f.read()
 
+@app.get("/translations")
+async def get_translations():
+    with open("/home/ubuntu/pdf-table-extractor/translations.json", "r") as f:
+        import json
+        return json.load(f)
+
 @app.post("/upload")
 async def upload_file(
     request: Request,
@@ -46,25 +52,29 @@ async def upload_file(
     file: UploadFile = File(...),
     extractor: str = "auto"
 ):
-    import fitz
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
-
-    # Page count check
-    content = await file.read()
-    try:
-        doc = fitz.open(stream=content, filetype="pdf")
-        if len(doc) > MAX_PAGES:
-            raise HTTPException(status_code=400, detail=f"File too large ({len(doc)} pages). Max {MAX_PAGES} pages allowed.")
-        doc.close()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid PDF: {e}")
 
     job_id = str(uuid.uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{job_id}.pdf")
     
-    with open(file_path, "wb") as f:
-        f.write(content)
+    # Fast streaming write
+    import shutil
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Fast page count check using fitz on the saved file
+    import fitz
+    try:
+        doc = fitz.open(file_path)
+        page_count = len(doc)
+        doc.close()
+        if page_count > MAX_PAGES:
+            os.remove(file_path)
+            raise HTTPException(status_code=400, detail=f"File too large ({page_count} pages). Max {MAX_PAGES} allowed.")
+    except Exception as e:
+        if os.path.exists(file_path): os.remove(file_path)
+        raise HTTPException(status_code=400, detail=f"Invalid PDF: {e}")
 
     create_job(job_id, file.filename, "pending", created_at=now_iso())
     background_tasks.add_task(_run_extraction, job_id, extractor)
