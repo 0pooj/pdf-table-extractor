@@ -2,6 +2,7 @@ import fitz
 import pandas as pd
 from typing import List, Dict, Any
 from parsers.base_parser import BaseParser
+from models_document import ParsedDocument
 from logger import logger
 
 class BOQParser(BaseParser):
@@ -18,16 +19,17 @@ class BOQParser(BaseParser):
     def can_handle(self, text: str) -> bool:
         keywords = ["bill of quantities", "boq", "item no", "quantity", "rate", "amount", "unit"]
         text_lower = text.lower()
-        # BOQ usually has several of these keywords
         matches = [k for k in keywords if k in text_lower]
         return len(matches) >= 3
 
-    def extract(self, pdf_path: str) -> List[Dict[str, Any]]:
-        results = []
+    def parse(self, pdf_path: str) -> ParsedDocument:
+        full_text = ""
+        tables = []
         try:
             doc = fitz.open(pdf_path)
             all_rows = []
             for page in doc:
+                full_text += page.get_text()
                 words = page.get_text("words")
                 lines = {}
                 for w in words:
@@ -48,7 +50,6 @@ class BOQParser(BaseParser):
                     for w in line_words:
                         x0 = w[0]
                         text = w[4]
-                        # Correct index for x_range access
                         for i, col in enumerate(self.cols):
                             xr = col["x_range"]
                             if xr[0] <= x0 < xr[1]:
@@ -59,37 +60,37 @@ class BOQParser(BaseParser):
             if all_rows:
                 df = pd.DataFrame(all_rows, columns=[c["name"] for c in self.cols])
                 final_df = self._merge_multiline(df)
-                results.append({
+                tables.append({
                     "title": "BOQ Data",
                     "dataframe": final_df,
-                    "headers": final_df.columns.tolist(),
-                    "rows": final_df.values.tolist()
+                    "page": 1
                 })
             doc.close()
         except Exception as e:
-            import traceback
-            logger.error(f"BOQParser error: {e}\n{traceback.format_exc()}")
-        return results
+            logger.error(f"BOQParser error: {e}")
+            
+        return ParsedDocument(
+            doc_type="boq",
+            text=full_text,
+            tables=tables,
+            metadata={"pages": len(doc) if 'doc' in locals() else 0}
+        )
 
     def _merge_multiline(self, df: pd.DataFrame) -> pd.DataFrame:
         merged = []
         current = None
         for _, row in df.iterrows():
             item_no = str(row["Item No"]).strip()
-            # New item starts if Item No has content
             if item_no and any(c.isdigit() for c in item_no):
                 if current: merged.append(current)
                 current = row.tolist()
             elif current:
-                # Continuation of description
                 current[1] = (current[1] + " " + str(row["Description"])).strip()
-                # Fill Qty, Rate, Amount if they exist on this line but not in current
                 col_names = ["Unit", "Quantity", "Rate", "Amount"]
                 for i, col in enumerate(col_names, start=2):
                     if not current[i] and str(row[col]).strip():
                         current[i] = str(row[col]).strip()
             else:
-                # Potential section header
                 if str(row["Description"]).strip():
                     current = row.tolist()
                     merged.append(current)

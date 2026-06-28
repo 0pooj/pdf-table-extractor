@@ -108,15 +108,11 @@ async def _run_extraction(job_id: str, extractor_mode: str):
     
     try:
         # Run extraction in a thread to keep FastAPI responsive
-        tables, parser_name = await asyncio.to_thread(_extract_logic, file_path, extractor_mode)
+        doc_data = await asyncio.to_thread(_extract_logic, file_path, extractor_mode)
         
-        if not tables:
-            update_job_status(job_id, "failed", error="No tables found in document.")
-            return
-
-        # Export to Excel
-        export_to_excel(tables, output_path)
-        update_job_status(job_id, "completed", finished_at=now_iso(), extractor_used=parser_name)
+        # Export to Excel (now takes the whole ParsedDocument)
+        export_to_excel(doc_data, output_path)
+        update_job_status(job_id, "completed", finished_at=now_iso(), extractor_used=doc_data.doc_type)
         
     except Exception as e:
         logger.exception(f"Extraction failed for {job_id}: {e}")

@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مستخرج المستندات الهندسية</title>
+  <title>Universal Document Parser</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
-      transition: direction 0.3s ease;
     }
     body.en { direction: ltr; }
     body.ar { direction: rtl; }
     .container {
       background: white;
-      border-radius: 20px;
+      border-radius: 24px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      max-width: 650px;
+      max-width: 750px;
       width: 100%;
       padding: 40px;
+      position: relative;
     }
     .language-toggle {
       position: absolute;
@@ -33,110 +33,75 @@
     }
     body.en .language-toggle { right: auto; left: 20px; }
     .toggle-btn {
-      background: white;
-      border: 2px solid #3b82f6;
-      color: #3b82f6;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #475569;
       padding: 8px 16px;
-      border-radius: 20px;
+      border-radius: 12px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 13px;
-      transition: all 0.3s ease;
+      transition: all 0.2s;
     }
-    .toggle-btn:hover {
-      background: #3b82f6;
-      color: white;
-    }
-    .header { text-align: center; margin-bottom: 35px; }
-    .header h1 { color: #1e3a8a; font-size: 30px; margin-bottom: 10px; font-weight: 800; }
-    .header p { color: #4b5563; font-size: 15px; line-height: 1.6; }
-    .form-group { margin-bottom: 25px; }
-    .form-group label { display: block; color: #1f2937; font-weight: 700; margin-bottom: 10px; font-size: 14px; }
-    .file-input-wrapper { position: relative; display: inline-block; width: 100%; }
-    .file-input-wrapper input[type="file"] { display: none; }
+    .toggle-btn:hover { background: #e2e8f0; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { color: #1e3a8a; font-size: 32px; margin-bottom: 12px; font-weight: 800; }
+    .header p { color: #64748b; font-size: 16px; }
+    .form-group { margin-bottom: 30px; }
+    .form-group label { display: block; color: #1e293b; font-weight: 700; margin-bottom: 12px; font-size: 15px; }
     .file-input-label {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       border: 2px dashed #3b82f6;
-      border-radius: 12px;
-      padding: 40px 20px;
+      border-radius: 16px;
+      padding: 50px 20px;
       cursor: pointer;
-      transition: all 0.3s ease;
       background: #eff6ff;
+      transition: all 0.3s;
     }
-    .file-input-label:hover { border-color: #1d4ed8; background: #dbeafe; }
+    .file-input-label:hover { background: #dbeafe; }
     .file-input-label.active { border-color: #10b981; background: #f0fdf4; }
-    .file-icon { font-size: 40px; margin-bottom: 15px; }
-    .file-text { text-align: center; }
-    .file-text .main { color: #111827; font-weight: 700; font-size: 15px; margin-bottom: 5px; }
-    .file-text .sub { color: #6b7280; font-size: 12px; }
-    .file-name { color: #059669; font-weight: 700; font-size: 14px; margin-top: 10px; }
-    .extractor-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .radio-option { position: relative; }
-    .radio-option input[type="radio"] { display: none; }
+    .extractor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .radio-option input { display: none; }
     .radio-label {
       display: flex;
       align-items: center;
-      padding: 15px;
-      border: 2px solid #e5e7eb;
-      border-radius: 10px;
+      padding: 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 14px;
       font-weight: 600;
-      color: #4b5563;
+      color: #475569;
+      transition: all 0.2s;
     }
-    .radio-option input[type="radio"]:checked + .radio-label {
+    .radio-option input:checked + .radio-label {
       border-color: #3b82f6;
       background: #eff6ff;
       color: #1e3a8a;
     }
-    .radio-dot {
-      width: 18px;
-      height: 18px;
-      border: 2px solid #d1d5db;
-      border-radius: 50%;
-      margin-left: 10px;
-      transition: all 0.3s ease;
-    }
-    body.en .radio-dot { margin-left: 0; margin-right: 10px; }
-    .radio-option input[type="radio"]:checked + .radio-label .radio-dot {
-      border-color: #3b82f6;
-      background: #3b82f6;
-      box-shadow: inset 0 0 0 3px #eff6ff;
-    }
-    .button-group { display: flex; gap: 15px; margin-top: 35px; }
     .btn {
-      flex: 1;
-      padding: 15px 25px;
+      width: 100%;
+      padding: 16px;
       border: none;
-      border-radius: 10px;
-      font-size: 15px;
+      border-radius: 12px;
+      font-size: 16px;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.3s;
+      margin-top: 20px;
     }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-primary:hover:not(:disabled) { background: #2563eb; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4); }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn-secondary { background: #f3f4f6; color: #4b5563; }
-    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1d4ed8; transform: translateY(-2px); }
     .status { margin-top: 30px; padding: 20px; border-radius: 12px; display: none; }
     .status.show { display: block; }
-    .status.info { background: #eff6ff; color: #1e40af; border-right: 5px solid #3b82f6; }
-    body.en .status.info { border-right: none; border-left: 5px solid #3b82f6; }
-    .status.success { background: #f0fdf4; color: #166534; border-right: 5px solid #10b981; }
-    body.en .status.success { border-right: none; border-left: 5px solid #10b981; }
-    .status.error { background: #fef2f2; color: #991b1b; border-right: 5px solid #ef4444; }
-    body.en .status.error { border-right: none; border-left: 5px solid #ef4444; }
-    .progress-bar { width: 100%; height: 6px; background: #d1d5db; border-radius: 3px; margin-top: 15px; overflow: hidden; }
-    .progress-fill { height: 100%; background: #3b82f6; width: 30%; animation: loading 2s linear infinite; }
-    @keyframes loading {
-      0% { transform: translateX(300%); }
-      100% { transform: translateX(-100%); }
-    }
+    .status.info { background: #f8fafc; color: #1e40af; border-left: 4px solid #3b82f6; }
+    .status.success { background: #f0fdf4; color: #166534; border-left: 4px solid #10b981; }
+    .status.error { background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444; }
   </style>
 </head>
 <body class="ar">
@@ -146,71 +111,52 @@
 
   <div class="container">
     <div class="header">
-      <h1 id="title">🏗️ مستخرج المستندات الهندسية</h1>
-      <p id="subtitle">نظام ذكي لتحليل واستخراج الجداول من ملفات BOQ والمواصفات والكتالوجات</p>
+      <h1 id="title">🔍 Universal Document Parser</h1>
+      <p id="subtitle">تحليل واستخراج شامل للمستندات الهندسية (جداول، نصوص، مواصفات)</p>
     </div>
 
     <form id="extractForm">
       <div class="form-group">
-        <label id="selectFileLabel">ملف الـ PDF</label>
-        <div class="file-input-wrapper">
-          <input type="file" id="pdfFile" accept="application/pdf" required>
-          <label for="pdfFile" class="file-input-label" id="fileLabel">
-            <div class="file-icon">📄</div>
-            <div class="file-text">
-              <div class="main" id="dragDropMain">اسحب الملف هنا أو اضغط للاختيار</div>
-              <div class="sub" id="dragDropSub">PDF فقط (حد أقصى 100 صفحة)</div>
-            </div>
-            <div class="file-name" id="fileName"></div>
-          </label>
-        </div>
+        <label id="fileLabelText">ارفع ملف الـ PDF</label>
+        <input type="file" id="pdfFile" accept="application/pdf" style="display:none" required>
+        <label for="pdfFile" class="file-input-label" id="fileZone">
+          <span style="font-size: 48px">📄</span>
+          <span id="dragText" style="margin-top: 15px; font-weight: 700">اسحب الملف هنا أو اضغط للاختيار</span>
+          <span id="fileName" style="margin-top: 10px; color: #10b981; font-weight: 800"></span>
+        </label>
       </div>
 
       <div class="form-group">
-        <label id="selectExtractorLabel">نوع المستند (المحرك)</label>
-        <div class="extractor-options">
+        <label id="modeLabelText">اختر نوع المستند</label>
+        <div class="extractor-grid">
           <div class="radio-option">
             <input type="radio" id="auto" name="extractor" value="auto" checked>
-            <label for="auto" class="radio-label" id="autoLabel">
-              <span id="autoText">تلقائي (الذكي)</span>
-              <span class="radio-dot"></span>
-            </label>
+            <label for="auto" class="radio-label">✨ <span id="opt-auto">كشف تلقائي (Auto)</span></label>
           </div>
           <div class="radio-option">
             <input type="radio" id="boq" name="extractor" value="boq">
-            <label for="boq" class="radio-label" id="boqLabel">
-              <span id="boqText">BOQ Parser</span>
-              <span class="radio-dot"></span>
-            </label>
+            <label for="boq" class="radio-label">📊 <span id="opt-boq">جداول كميات (BOQ)</span></label>
           </div>
           <div class="radio-option">
             <input type="radio" id="datasheet" name="extractor" value="datasheet">
-            <label for="datasheet" class="radio-label" id="datasheetLabel">
-              <span id="datasheetText">Datasheet</span>
-              <span class="radio-dot"></span>
-            </label>
+            <label for="datasheet" class="radio-label">⚙️ <span id="opt-datasheet">ورقة بيانات (Datasheet)</span></label>
           </div>
           <div class="radio-option">
             <input type="radio" id="catalog" name="extractor" value="catalog">
-            <label for="catalog" class="radio-label" id="catalogLabel">
-              <span id="catalogText">Catalog</span>
-              <span class="radio-dot"></span>
-            </label>
+            <label for="catalog" class="radio-label">📘 <span id="opt-catalog">كتالوج (Catalog)</span></label>
           </div>
           <div class="radio-option">
             <input type="radio" id="specsheet" name="extractor" value="specsheet">
-            <label for="specsheet" class="radio-label" id="specsheetLabel">
-              <span id="specsheetText">Spec Sheet</span>
-              <span class="radio-dot"></span>
-            </label>
+            <label for="specsheet" class="radio-label">📝 <span id="opt-spec">مواصفات (SpecSheet)</span></label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="generic" name="extractor" value="generic">
+            <label for="generic" class="radio-label">📄 <span id="opt-generic">مستند عام (Generic)</span></label>
           </div>
         </div>
       </div>
 
-      <div class="button-group">
-        <button type="submit" class="btn btn-primary" id="submitBtn">بدء التحليل والاستخراج</button>
-        <button type="button" class="btn btn-secondary" id="resetBtn">مسح</button>
-      </div>
+      <button type="submit" class="btn btn-primary" id="submitBtn">بدء الاستخراج الشامل</button>
     </form>
 
     <div class="status" id="status"></div>
@@ -218,82 +164,68 @@
 
   <script>
     let currentLang = 'ar';
-    const translations = {};
-
-    // Load translations
-    fetch('/translations')
-      .then(r => r.json())
-      .then(data => {
-        Object.assign(translations, data);
-      });
-
-    function t(key, replacements = {}) {
-      let text = translations[currentLang]?.[key] || key;
-      for (const [k, v] of Object.entries(replacements)) {
-        text = text.replace(`{${k}}`, v);
+    const translations = {
+      ar: {
+        title: "🔍 Universal Document Parser",
+        subtitle: "تحليل واستخراج شامل للمستندات الهندسية (جداول، نصوص، مواصفات)",
+        fileLabel: "ارفع ملف الـ PDF",
+        dragText: "اسحب الملف هنا أو اضغط للاختيار",
+        modeLabel: "اختر نوع المستند",
+        extractBtn: "بدء الاستخراج الشامل",
+        success: "تم الاستخراج بنجاح! جاري تحميل ملف Excel...",
+        processing: "جاري المعالجة... الحالة: {status}",
+        uploading: "جاري رفع الملف...",
+        error: "حدث خطأ: {error}"
+      },
+      en: {
+        title: "🔍 Universal Document Parser",
+        subtitle: "Comprehensive extraction for engineering docs (Tables, Text, Specs)",
+        fileLabel: "Upload PDF File",
+        dragText: "Drag & Drop file or click to browse",
+        modeLabel: "Select Document Type",
+        extractBtn: "Start Universal Extraction",
+        success: "Success! Downloading your Excel file...",
+        processing: "Processing... Status: {status}",
+        uploading: "Uploading file...",
+        error: "Error: {error}"
       }
-      return text;
-    }
+    };
 
     function updateUI() {
-      document.getElementById('title').textContent = '🏗️ ' + t('title');
-      document.getElementById('subtitle').textContent = t('subtitle');
-      document.getElementById('selectFileLabel').textContent = t('selectFile');
-      document.getElementById('dragDropMain').textContent = t('dragDrop');
-      document.getElementById('dragDropSub').textContent = t('fileLimit');
-      document.getElementById('selectExtractorLabel').textContent = t('selectExtractor');
-      document.getElementById('autoText').textContent = t('auto');
-      document.getElementById('boqText').textContent = t('boq');
-      document.getElementById('datasheetText').textContent = t('datasheet');
-      document.getElementById('catalogText').textContent = t('catalog');
-      document.getElementById('specsheetText').textContent = t('specsheet');
-      document.getElementById('submitBtn').textContent = t('extract');
-      document.getElementById('resetBtn').textContent = t('reset');
+      const t = translations[currentLang];
+      document.getElementById('title').textContent = t.title;
+      document.getElementById('subtitle').textContent = t.subtitle;
+      document.getElementById('fileLabelText').textContent = t.fileLabel;
+      document.getElementById('dragText').textContent = t.dragText;
+      document.getElementById('modeLabelText').textContent = t.modeLabel;
+      document.getElementById('submitBtn').textContent = t.extractBtn;
       document.getElementById('langToggle').textContent = currentLang === 'ar' ? 'English' : 'العربية';
     }
 
     document.getElementById('langToggle').addEventListener('click', () => {
       currentLang = currentLang === 'ar' ? 'en' : 'ar';
-      document.documentElement.lang = currentLang;
-      document.body.classList.toggle('en');
-      document.body.classList.toggle('ar');
+      document.body.className = currentLang;
       updateUI();
     });
 
-    const form = document.getElementById('extractForm');
     const pdfFile = document.getElementById('pdfFile');
-    const fileName = document.getElementById('fileName');
-    const fileLabel = document.getElementById('fileLabel');
-    const statusDiv = document.getElementById('status');
-    const submitBtn = document.getElementById('submitBtn');
-
     pdfFile.addEventListener('change', (e) => {
       if (e.target.files[0]) {
-        fileName.textContent = e.target.files[0].name;
-        fileLabel.classList.add('active');
+        document.getElementById('fileName').textContent = e.target.files[0].name;
+        document.getElementById('fileZone').classList.add('active');
       }
     });
 
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      form.reset();
-      fileName.textContent = '';
-      fileLabel.classList.remove('active');
-      statusDiv.classList.remove('show');
-      submitBtn.disabled = false;
-    });
-
-    form.addEventListener('submit', async (e) => {
+    document.getElementById('extractForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const file = pdfFile.files[0];
       const extractor = document.querySelector('input[name="extractor"]:checked').value;
-
-      if (!file) {
-        showStatus(t('selectPDF'), 'error');
-        return;
-      }
+      const submitBtn = document.getElementById('submitBtn');
+      const statusDiv = document.getElementById('status');
 
       submitBtn.disabled = true;
-      showStatus(t('uploading'), 'info');
+      statusDiv.className = 'status show info';
+      statusDiv.textContent = translations[currentLang].uploading;
 
       const fd = new FormData();
       fd.append('file', file);
@@ -301,47 +233,31 @@
 
       try {
         const res = await fetch('/upload', { method: 'POST', body: fd });
-        if (!res.ok) throw new Error(await res.text());
-        
         const { job_id } = await res.json();
-        pollStatus(job_id);
+        
+        const poll = async () => {
+          const sRes = await fetch(`/status/${job_id}`);
+          const data = await sRes.json();
+          if (data.status === 'completed') {
+            statusDiv.className = 'status show success';
+            statusDiv.textContent = translations[currentLang].success;
+            setTimeout(() => { window.location.href = `/download/${job_id}`; submitBtn.disabled = false; }, 2000);
+          } else if (data.status === 'failed') {
+            statusDiv.className = 'status show error';
+            statusDiv.textContent = translations[currentLang].error.replace('{error}', data.error);
+            submitBtn.disabled = false;
+          } else {
+            statusDiv.textContent = translations[currentLang].processing.replace('{status}', data.status);
+            setTimeout(poll, 2000);
+          }
+        };
+        poll();
       } catch (err) {
-        showStatus(t('error', { error: err.message }), 'error');
+        statusDiv.className = 'status show error';
+        statusDiv.textContent = err.message;
         submitBtn.disabled = false;
       }
     });
-
-    async function pollStatus(job_id) {
-      try {
-        const res = await fetch(`/status/${job_id}`);
-        const data = await res.json();
-
-        if (data.status === 'completed') {
-          showStatus(t('success', { parser: data.extractor_used }), 'success');
-          setTimeout(() => {
-            window.location.href = `/download/${job_id}`;
-            submitBtn.disabled = false;
-          }, 2000);
-        } else if (data.status === 'failed') {
-          showStatus(t('error', { error: data.error }), 'error');
-          submitBtn.disabled = false;
-        } else {
-          showStatus(t('processing', { status: data.status }), 'info');
-          setTimeout(() => pollStatus(job_id), 2000);
-        }
-      } catch (err) {
-        showStatus(t('connectionError'), 'error');
-        submitBtn.disabled = false;
-      }
-    }
-
-    function showStatus(msg, type) {
-      statusDiv.className = `status show ${type}`;
-      statusDiv.innerHTML = `<div>${msg}</div>` + (type === 'info' ? '<div class="progress-bar"><div class="progress-fill"></div></div>' : '');
-    }
-
-    // Initialize UI
-    updateUI();
   </script>
 </body>
 </html>

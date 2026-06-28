@@ -2,6 +2,7 @@ import fitz
 import pandas as pd
 from typing import List, Dict, Any
 from parsers.base_parser import BaseParser
+from models_document import ParsedDocument
 from logger import logger
 
 class CatalogParser(BaseParser):
@@ -10,23 +11,41 @@ class CatalogParser(BaseParser):
         text_lower = text.lower()
         return any(k in text_lower for k in keywords)
 
-    def extract(self, pdf_path: str) -> List[Dict[str, Any]]:
-        # Catalog logic focuses on identifying product codes and prices
-        results = []
+    def parse(self, pdf_path: str) -> ParsedDocument:
+        full_text = ""
+        products = []
+        tables = []
+        
         try:
             doc = fitz.open(pdf_path)
-            for page in doc:
+            for i, page in enumerate(doc):
+                text = page.get_text()
+                full_text += text
+                
+                # Heuristic for products: Lines with codes
+                lines = text.splitlines()
+                for line in lines:
+                    if any(c.isdigit() for c in line) and any(c.isalpha() for c in line) and "-" in line:
+                        products.append({"code": line.strip(), "page": i+1})
+                
+                # Tables
                 tabs = page.find_tables()
-                for tab in tabs:
+                for j, tab in enumerate(tabs):
                     df = tab.to_pandas()
                     if not df.empty:
-                        results.append({
-                            "title": "Catalog Data",
+                        tables.append({
+                            "title": f"Catalog_Table_{i+1}_{j+1}",
                             "dataframe": df,
-                            "headers": df.columns.tolist(),
-                            "rows": df.values.tolist()
+                            "page": i + 1
                         })
             doc.close()
         except Exception as e:
             logger.error(f"CatalogParser error: {e}")
-        return results
+            
+        return ParsedDocument(
+            doc_type="catalog",
+            text=full_text,
+            products=products,
+            tables=tables,
+            metadata={"pages": len(doc) if 'doc' in locals() else 0}
+        )
