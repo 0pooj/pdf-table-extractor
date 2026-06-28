@@ -12,10 +12,11 @@ class AutoClassifier:
     Analyzes the document and routes it to the most suitable specialized parser.
     """
     def __init__(self):
+        # Order matters: check most specific types first
         self.parsers = [
             BOQParser(),
-            DatasheetParser(),
             CatalogParser(),
+            DatasheetParser(),
             SpecSheetParser()
         ]
 
