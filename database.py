@@ -8,6 +8,7 @@ Improvements over v0.2:
     environments where the working directory may not be writable at import.
 """
 from __future__ import annotations
+from paths import DATABASE_PATH
 
 import os
 import sqlite3
@@ -15,9 +16,9 @@ from pathlib import Path
 
 
 def _get_db_path() -> str:
-    path = os.getenv("DATABASE_PATH", "data/app.db")
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    return path
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    return str(DATABASE_PATH)
+
 
 
 def get_connection() -> sqlite3.Connection:

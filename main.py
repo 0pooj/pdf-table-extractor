@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
+from paths import BASE_DIR, UPLOAD_DIR, EXPORT_DIR, STATIC_UI_PATH, TRANSLATIONS_PATH
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from logger import logger
@@ -19,7 +20,7 @@ from parsers.auto_classifier import AutoClassifier
 app = FastAPI(title="Engineering PDF Extractor")
 
 # Constants
-UPLOAD_DIR = "/home/ubuntu/pdf-table-extractor/uploads"
+UPLOAD_DIR = str(UPLOAD_DIR)
 OUTPUT_DIR = "/home/ubuntu/pdf-table-extractor/outputs"
 MAX_FILE_SIZE = 50 * 1024 * 1024 # 50MB
 MAX_PAGES = 100
@@ -36,7 +37,7 @@ def now_iso():
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    with open("/home/ubuntu/pdf-table-extractor/static_ui.html", "r") as f:
+    with open(str(STATIC_UI_PATH), "r") as f:
         return f.read()
 
 @app.get("/translations")
