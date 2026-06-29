@@ -120,5 +120,21 @@ async def _run_extraction(job_id: str, extractor_mode: str):
         update_job_status(job_id, "failed", error=str(e))
 
 def _extract_logic(pdf_path: str, mode: str):
-    classifier = AutoClassifier()
-    return classifier.classify_and_extract(pdf_path, mode)
+    from parsers.boq_parser import BOQParser
+    from parsers.datasheet_parser import DatasheetParser
+    from parsers.catalog_parser import CatalogParser
+    from parsers.specsheet_parser import SpecSheetParser
+    from parsers.generic_parser import GenericParser
+    from parsers.ocr_parser import OCRParser
+
+    parsers = {
+        "boq": BOQParser(),
+        "datasheet": DatasheetParser(),
+        "catalog": CatalogParser(),
+        "specsheet": SpecSheetParser(),
+        "generic": GenericParser(),
+        "ocr": OCRParser()
+    }
+    
+    selected_parser = parsers.get(mode, BOQParser())
+    return selected_parser.parse(pdf_path)
