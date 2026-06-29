@@ -44,17 +44,26 @@ class BOQParser(BaseParser):
                 
                 sorted_y = sorted(lines.keys())
                 for y in sorted_y:
-                    if y < 60: continue
+                    # Ignore headers/footers based on Y position (Tuned for the provided BOQ)
+                    if y < 100 or y > 780: continue 
+                    
                     line_words = sorted(lines[y], key=lambda x: x[0])
                     row = [""] * 6
                     for w in line_words:
                         x0 = w[0]
                         text = w[4]
+                        # Clean common PDF artifacts
+                        if text in ["|", "_", "Page", "of"]: continue
+                        
                         for i, col in enumerate(self.cols):
                             xr = col["x_range"]
                             if xr[0] <= x0 < xr[1]:
                                 row[i] = (row[i] + " " + text).strip()
                                 break
+                    
+                    # Filter out rows that are just repeated headers
+                    if row[0].lower() == "item" or "description" in row[1].lower(): continue
+                    
                     if any(row): all_rows.append(row)
             
             if all_rows:
@@ -81,19 +90,25 @@ class BOQParser(BaseParser):
         current = None
         for _, row in df.iterrows():
             item_no = str(row["Item No"]).strip()
+            # If Item No exists and contains a number, it's a new row
             if item_no and any(c.isdigit() for c in item_no):
                 if current: merged.append(current)
                 current = row.tolist()
             elif current:
-                current[1] = (current[1] + " " + str(row["Description"])).strip()
-                col_names = ["Unit", "Quantity", "Rate", "Amount"]
-                for i, col in enumerate(col_names, start=2):
-                    if not current[i] and str(row[col]).strip():
-                        current[i] = str(row[col]).strip()
+                # Append description
+                desc = str(row["Description"]).strip()
+                if desc:
+                    current[1] = (current[1] + " " + desc).strip()
+                
+                # Try to fill other columns if they were empty in the main row
+                for i in range(2, 6):
+                    val = str(row.iloc[i]).strip()
+                    if val and not str(current[i]).strip():
+                        current[i] = val
             else:
-                if str(row["Description"]).strip():
+                # First row case
+                if any(str(v).strip() for v in row):
                     current = row.tolist()
-                    merged.append(current)
-                    current = None
+        
         if current: merged.append(current)
         return pd.DataFrame(merged, columns=df.columns)

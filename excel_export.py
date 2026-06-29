@@ -22,10 +22,12 @@ def export_to_excel(doc: ParsedDocument, output_path: str) -> None:
     # 1. Summary Sheet
     summary = wb.active
     summary.title = "Summary"
-    summary.append(["Property", "Value"])
+    summary.append(["Document Property", "Information"])
+    summary.append(["File Name", doc.metadata.get("filename", "Unknown")])
     summary.append(["Document Type", doc.doc_type.upper()])
     summary.append(["Total Pages", doc.metadata.get("pages", "Unknown")])
-    summary.append(["Extractor Used", doc.metadata.get("method", "Auto-Classifier")])
+    summary.append(["Extraction Method", doc.metadata.get("method", "Auto-Classifier")])
+    summary.append(["Extraction Date", pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")])
     _style_header_row(summary, 1, 2)
 
     # 2. Tables Sheets (Each large table gets its own sheet)
